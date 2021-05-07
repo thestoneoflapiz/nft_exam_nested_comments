@@ -37,4 +37,9 @@ class AuthController extends Controller
             "error" => "User not found!"
         ], 400);
     }
+
+    function logout(){
+        Auth::logout();
+        return redirect("/login");
+    }
 }

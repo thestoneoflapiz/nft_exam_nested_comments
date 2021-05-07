@@ -16,6 +16,7 @@ use App\Http\Controllers\{
 |
 */
 Route::get('/login', [AuthController::class, 'index']);
+Route::get('/logout', [AuthController::class, 'logout']);
 Route::post('/login/action', [AuthController::class, 'login']);
 Route::get('/', function(Request $request){
     if(Auth::check()){
