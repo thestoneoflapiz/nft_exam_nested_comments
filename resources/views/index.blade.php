@@ -24,12 +24,16 @@
             .error-span{font-weight:bold;display:none;}
             .btn:is(:disabled){background-color:grey;border-color:black;}
 
-            .comment-div{border-top: 1px solid #e2e8f0;}
+            .comment-div{border-top: 1px solid #e2e8f0;padding-left:3rem;}
             .comment-div-child{border-top: 1px solid #e2e8f0;margin-right:5px;margin-left:5px;}
+            .comment-children{margin-top:1rem;}
 
             .posted-by-label{font-weight:bold;}
             .posted-date-label{color:#656565;font-size:0.9rem;text-align:right;}
             .posted-description{color:#656565;font-size:0.9rem;}
+            .posted-description.comment{background-color:#e0e0e042;padding:10px;border-radius:5px;}
+
+            .btn-reply{margin-top:1.5rem;font-size:0.9rem;}
         </style>
     </head>
     <body class="antialiased">
@@ -49,7 +53,7 @@
                                 <span class="error error-span"></span>
                                 <div class="row mind-margin">
                                     <div class="col-12">
-                                        <input type="text" name="comment" placeholder="What's in your mind?" class="form-control"/>
+                                        <input type="text" name="comment_0" placeholder="What's in your mind?" class="form-control"/>
                                     </div>
                                 </div>
                                 <div class="row mind-margin">
@@ -80,15 +84,19 @@
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.js" integrity="sha512-n/4gHW3atM3QqRcbCn6ewmpxcLAHGaDjpEBu4xZd47N0W2oQ+6q7oc3PXstrJYXcbNU1OHdQ1T7pAP+gi5Yu8g==" crossorigin="anonymous"></script>
         <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.3/dist/jquery.validate.js"></script>
-
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timeago/1.4.3/jquery.timeago.js"></script>
+        
         <script>
             var postData = [];
 
             jQuery(document).ready(function(){
+                validateForm(0,1);
                 get_post_data();
             });
 
-            $("#commentForm").validate({
+            function validateForm(parentId, commentableId){
+                var formName = parentId>0?("parent_comment_form_"+parentId):"commentForm";
+                $("#"+formName).validate({
                 rules:{
                     comment:{
                         required: true,
@@ -100,7 +108,7 @@
                     }
                 },
                 submitHandler: function(form) {
-                    $("#formButton").prop("disabled", true);
+                    $("#formButton_"+parentId).prop("disabled", true);
                     $(".error-span").html("").hide();
 
                     $.ajax({
@@ -108,18 +116,18 @@
                         method: "post",
                         data: {
                             post_id: postData.id,
-                            commentable_id: 1,
-                            comment: $("[name=comment]").val(),
+                            parent_id: parentId>0?parentId:null ,
+                            commentable_id: commentableId,
+                            comment: $("[name=comment_"+parentId+"]").val(),
                             _token: "{{ csrf_token() }}"
                         },
                         success: function(response){
                             setTimeout(() => {
                                 $("#commentForm").trigger('reset');
                                 get_post_data();
-                            }, 1500);
+                            }, 1000);
                         },
                         error: function(response){
-                            console.log(response);
                             var jsonRes = response.responseJSON;
                             if(jsonRes.hasOwnProperty("error")){
                                 $(".error-span").html(jsonRes.error).show();
@@ -127,12 +135,13 @@
                         },
                         complete: function(){
                             setTimeout(() => {
-                                $("#formButton").prop("disabled", false);
+                                $("#formButton_"+parentId).prop("disabled", false);
                             }, 1500);
                         }
                     });
                 },
             });
+            }
 
             function get_post_data(){
                 $.ajax({
@@ -157,8 +166,9 @@
                 $("#postDiv").html(`
                     <div class="row mind-margin">
                         <div class="col-6 posted-by-label">${postData.user_name}</div>
-                        <div class="col-6 posted-date-label">${postData.created_at_string}</div>
+                        <div class="col-6 posted-date-label">${jQuery.timeago(new Date(postData.created_at))}</div>
                         <div class="col-12 posted-description">${postData.description}</div>
+                        `+(postData.comments.length > 0 ? `<div class="col-12 posted-date-label">${postData.comments.length} comment${postData.comments.length>1?"s":""}</div>`: '')+`
                     </div>
                 `);
 
@@ -167,24 +177,26 @@
                     var flc_data = postData.comments;
                     flc_data.forEach((flc, flck) => {
                         
-                        var flc_new_div = $("<div></div>").addClass("p-6 comment-div").append(`
-                            <div class="row mind-margin">
-                                
-                                <div class="col-6 posted-by-label">${flc.user_name}</div>
-                                <div class="col-6 posted-date-label">${flc.created_at_string}</div>
-                                <div class="col-12 posted-description">${flc.description}</div>
-                                <div class="col-12 comment-form-div">${flc.description}</div>
-                            </div>
-                        `);
-
-                        // if(flc.comments.length > 0){
-                        //     var slc_data = flc.comments;
-                        //     slc_data.forEach((slc, slck) => {
-
-                        //     });
-                        // }
-
+                        var flc_new_div = generateComment(true, flc);
                         $("#commentDataDiv").append(flc_new_div);
+
+                        if(flc.comments.length > 0){
+                            var slc_data = flc.comments;
+                            slc_data.forEach((slc, slck) => {
+
+                                console.log(slc);
+                                var slc_new_div = generateComment(true, slc);
+                                $("#comment_children_"+slc.parent_id).append(slc_new_div);
+
+                                if(slc.comments.length > 0){
+                                    var tlc_data = slc.comments;
+                                    tlc_data.forEach((tlc, tlck) => {
+                                        var tlc_new_div = generateComment(false, tlc);
+                                        $("#comment_children_"+tlc.parent_id).append(tlc_new_div);
+                                    });
+                                }
+                            });
+                        }
 
                     });
 
@@ -194,6 +206,60 @@
                 }
 
                 $("#postDataDiv").show();
+            }
+
+            function generateComment(isCommentable, data){
+                if(isCommentable){
+                    return $("<div></div>").addClass("p-6 comment-div").append(`
+                        <div class="row mind-margin" id="comment_parent_${data.id}">
+                            <div class="col-6 posted-by-label">${data.user_name}</div>
+                            <div class="col-6 posted-date-label">${jQuery.timeago(new Date(data.created_at))}</div>
+                            <div class="col-12 posted-description comment">${data.description}</div>
+                            `+(data.comments.length > 0 ? `<div class="col-12 posted-date-label">${data.comments.length} repl${data.comments.length>1?"ies":"y"}</div>` : ``)+`
+                            <div class="col-12"><a onclick="replyToComment(${data.id}, ${data.commentable_id+1})" class="btn-reply">Reply</a></div>
+                            <div class="col-12"><div class="grid grid-cols-1 md:grid-cols-1 comment-children" id="comment_children_${data.id}"></div></div>
+                        </div>
+                    `); 
+                }
+
+                return $("<div></div>").addClass("p-6 comment-div").append(`
+                    <div class="row" id="comment_parent_${data.id}">
+                        <div class="col-6 posted-by-label">${data.user_name}</div>
+                        <div class="col-6 posted-date-label">${jQuery.timeago(new Date(data.created_at))}</div>
+                        <div class="col-12 posted-description comment">${data.description}</div>
+                    </div>
+                `);
+            }
+
+            function replyToComment(parentId, commentableId){
+                var parent_comment = $("#comment_parent_"+parentId);
+                var existing_pc_form = $(`#parent_comment_form_${parentId}`).length;
+                if(!existing_pc_form){
+                    parent_comment.append(`
+                        <div class="col-12">
+                            <form id="parent_comment_form_${parentId}">
+                                <div class="row mind-margin">
+                                    <div class="col-12">
+                                        <input type="text" name="comment_${parentId}" placeholder="What's in your mind?" class="form-control"/>
+                                    </div>
+                                </div>
+                                <div class="row mind-margin">
+                                    <div class="col-12">
+                                        <button class="btn btn-primary" style="float:right;" type="submit" id="formButton_${parentId}">reply</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    `);                   
+
+                    validateForm(parentId, commentableId);
+                }
+
+                $('html, body').animate({
+                    scrollTop: $(`#parent_comment_form_${parentId}`).offset().top
+                }, 1000);
+
+                $(`#parent_comment_form_${parentId}`).find("input").focus();
             }
 
         </script>
