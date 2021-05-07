@@ -23,7 +23,7 @@ class PostController extends Controller
                 "post_id" => $post->id,
                 "parent_id" => null,
                 "commentable_id" => 1,
-            ])->orderBy("created_at", "desc");
+            ])->orderBy("comments.created_at", "desc")->get();
 
             foreach ($first_layers as $fc) {
                  // get second layer comments
@@ -33,8 +33,7 @@ class PostController extends Controller
                     "post_id" => $post->id,
                     "parent_id" => $fc->id,
                     "commentable_id" => 2,
-                ])->orderBy("created_at", "desc");
-
+                ])->orderBy("comments.created_at", "desc")->get();
                 foreach ($second_layers as $sc) {
                     // get second layer comments
                    $third_layers = Comment::select(
@@ -43,7 +42,7 @@ class PostController extends Controller
                        "post_id" => $post->id,
                        "parent_id" => $fc->id,
                        "commentable_id" => 3,
-                   ])->orderBy("created_at", "desc");
+                   ])->orderBy("comments.created_at", "desc")->get();
 
                    $sc->comments = $third_layers;
                }

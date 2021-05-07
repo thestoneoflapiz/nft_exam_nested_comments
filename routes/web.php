@@ -27,5 +27,5 @@ Route::get('/', function(Request $request){
 
 Route::middleware(["auth"])->group(function () {
     Route::get('/getPost', [PostController::class, 'getPost']);
-    Route::post('/comment', [CommentController::class, 'postComment']);
+    Route::post('/post/comment', [CommentController::class, 'postComment']);
 });

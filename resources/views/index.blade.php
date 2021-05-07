@@ -25,6 +25,7 @@
             .btn:is(:disabled){background-color:grey;border-color:black;}
 
             .comment-div{border-top: 1px solid #e2e8f0;}
+            .comment-div-child{border-top: 1px solid #e2e8f0;margin-right:5px;margin-left:5px;}
 
             .posted-by-label{font-weight:bold;}
             .posted-date-label{color:#656565;font-size:0.9rem;text-align:right;}
@@ -38,9 +39,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-1">
                         <div class="p-6" id="postDiv"></div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-1 comment-div">
-                        <div class="p-6" id="commentDiv"></div>
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-1" id="commentDataDiv"></div>
                 </div>
 
                 <div class="mt-8 bg-white dark:bg-gray-800 overflow-hidden shadow sm:rounded-lg">
@@ -105,16 +104,18 @@
                     $(".error-span").html("").hide();
 
                     $.ajax({
-                        url: "/login/action",
+                        url: "/post/comment",
                         method: "post",
                         data: {
-                            email: $("[name=email]").val(),
-                            password: $("[name=password]").val(),
+                            post_id: postData.id,
+                            commentable_id: 1,
+                            comment: $("[name=comment]").val(),
                             _token: "{{ csrf_token() }}"
                         },
                         success: function(response){
                             setTimeout(() => {
-                                location.reload();
+                                $("#commentForm").trigger('reset');
+                                get_post_data();
                             }, 1500);
                         },
                         error: function(response){
@@ -159,13 +160,37 @@
                         <div class="col-6 posted-date-label">${postData.created_at_string}</div>
                         <div class="col-12 posted-description">${postData.description}</div>
                     </div>
-
                 `);
 
+                $("#commentDataDiv").empty();
                 if(postData.comments.length > 0){
-                    // to be posted
+                    var flc_data = postData.comments;
+                    flc_data.forEach((flc, flck) => {
+                        
+                        var flc_new_div = $("<div></div>").addClass("p-6 comment-div").append(`
+                            <div class="row mind-margin">
+                                
+                                <div class="col-6 posted-by-label">${flc.user_name}</div>
+                                <div class="col-6 posted-date-label">${flc.created_at_string}</div>
+                                <div class="col-12 posted-description">${flc.description}</div>
+                                <div class="col-12 comment-form-div">${flc.description}</div>
+                            </div>
+                        `);
+
+                        // if(flc.comments.length > 0){
+                        //     var slc_data = flc.comments;
+                        //     slc_data.forEach((slc, slck) => {
+
+                        //     });
+                        // }
+
+                        $("#commentDataDiv").append(flc_new_div);
+
+                    });
+
+                    $("#commentDataDiv").show();
                 }else{
-                    $(".comment-div").hide();
+                    $("#commentDataDiv").hide();
                 }
 
                 $("#postDataDiv").show();
